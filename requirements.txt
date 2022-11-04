@@ -1,6 +1,11 @@
 # local package
 -e .
 
+# project requirements
+jupyter=1.0.0
+pypsa=0.20.1
+
+
 # external requirements
 click
 Sphinx
