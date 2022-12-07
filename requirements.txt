@@ -121,3 +121,6 @@ widgetsnbextension @ file:///C:/ci/widgetsnbextension_1645009839917/work
 win-inet-pton @ file:///C:/ci_310/win_inet_pton_1642658466512/work
 wincertstore==0.2
 xarray @ file:///home/conda/feedstock_root/build_artifacts/xarray_1667615844904/work
+
+setuptools~=65.5.0
+pandas~=1.4.4
