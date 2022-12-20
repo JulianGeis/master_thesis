@@ -29,6 +29,27 @@ def market_values(n, carrier='onwind'):
     return mv
 
 
+def generation(n, carrier='onwind'):
+    """
+    Calculate the generation of a generator (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        production of generator spcified by carrier per region
+    """
+
+    gen = n.generators_t.p.loc[:, n.generators.carrier == carrier]
+    gen.columns = gen.columns.map(n.generators.bus)
+    gen.columns = gen.columns.map(n.buses.location)
+    gen = gen.sum()
+
+    return gen
+
+
 def market_values_by_time_index(n, my_dates, carrier="onwind"):
     result = pd.DataFrame(index=my_dates, columns=n.buses.location.unique())
     for my_date in my_dates:
@@ -46,6 +67,8 @@ def market_values_by_time_index(n, my_dates, carrier="onwind"):
         # assign values to result
         for location in mv.index:
             result.loc[result.index == my_date, location] = mv[location]
+
+    result = result.apply(pd.to_numeric)
 
     return result
 
@@ -75,6 +98,23 @@ def market_values_links(n, carrier="H2 Electrolysis"):
     # set location of the buses/nodes as the index -> shape = (n_links x 1) 1 col with mvs
     mv.index = mv.index.map(n.buses.location)
     return mv
+
+def generation_links(n, carrier="H2 Electrolysis"):
+    """
+    Calculate the generation of a link (specified by carrier) throughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        generation of carrier per region
+    """
+
+    gen = abs(n.links_t.p1.loc[:, n.links.carrier == carrier])
+    gen.columns = gen.columns.map(n.links.bus1)
+    gen = gen.groupby(gen.columns, axis=1).sum()
+    gen.columns = gen.columns.map(n.buses.location)
+    gen = gen.sum()
+    return gen
 
 
 def market_values_links_con(n, carrier="H2 Electrolysis"):
@@ -117,6 +157,43 @@ def congestion_rent_link(n, carrier="H2 Electrolysis"):
                 n.buses_t.marginal_price[n.links[bus][n.links.carrier == carrier]].values)
     return cr
 
+def market_values_storage_units(n, carrier="hydro"):
+    """
+    Calculate the market values of the generation of a storage unit (specified by carrier) throughout all 181 market
+    areas as the sum product of generation / dispatch and locational marginal prices of consumption bus divided by
+    the sum of generation
+
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        market value of carrier per region
+    """
+    # only take dispatched energy not stored
+    gen = n.storage_units_t.p_dispatch.loc[:, n.storage_units.carrier == carrier]
+    gen.columns = gen.columns.map(n.storage_units.bus)
+    lmp = n.buses_t.marginal_price.loc[:, gen.columns]
+    mv = (gen * lmp).sum() / gen.sum()
+    mv.index = mv.index.map(n.buses.location)
+    return mv
+
+def generation_storage_units(n, carrier='hydro'):
+    """
+    Calculate the generation (=dispatch) of a storage unit (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        production of generator spcified by carrier per region
+    """
+    gen = n.storage_units_t.p_dispatch.loc[:, n.storage_units.carrier == carrier]
+    gen.columns = gen.columns.map(n.storage_units.bus)
+    gen.columns = gen.columns.map(n.buses.location)
+    gen = gen.sum()
+    return gen
 
 # mapping of country code
 convert_ISO_3166_2_to_1 = {
