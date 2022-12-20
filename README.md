@@ -3,7 +3,7 @@ ma_mvfre
 
 master thesis on market values of fluctuating renewable energies
 
-![Alt Text](data/interim/mv_onwind_weeks.gif)
+![Alt Text](mv_onwind_weeks.gif)
 
 Project Organization
 ------------
