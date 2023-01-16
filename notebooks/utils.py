@@ -195,6 +195,92 @@ def generation_storage_units(n, carrier='hydro'):
     gen = gen.sum()
     return gen
 
+
+def nodal_balance(n, carrier, time=slice(None), aggregate=None, energy=True):
+    """
+    calc energy balance / um of active power per energy carrier and time steps.
+    Arguments:
+        carrier: carrier or list of carriers you want to calc the balance
+        time: time period or list of snapshots as strings e.g. "2013-01-01" or ["2013-01-01 00:00:00" , "2013-01-01 03:00:00"]
+        aggregate: specify item of ['component', 'snapshot', 'bus', 'carrier'] which will be excluded from Index and aggregated (sum) on it
+        energy: if set true the balance is multiplied by 3 to simulate a aggregation of 24 hours simulation not 8 hours simulation (as we have in the network)
+    Returns:
+        Aggregated active power per carrier, time step and bus
+    """
+    if not isinstance(carrier, list):
+        carrier = [carrier]
+
+    one_port_data = {}
+
+    # iterate in {'Generator', 'Load', 'ShuntImpedance', 'StorageUnit', 'Store'}
+    for c in n.iterate_components(n.one_port_components):
+
+        # get df of all components that are at a bus with the specified carrier
+        df = c.df[c.df.bus.map(n.buses.carrier).isin(carrier)]
+
+        if df.empty:
+            continue
+
+        # create df with all active power data for the given time steps
+        s = c.pnl.p.loc[time, df.index] * df.sign
+
+        # group data by location and carrier and take sum (delete axis if you only have one time step)
+        s = s.groupby([df.bus.map(n.buses.location), df.carrier], axis=1).sum()
+
+        # save data of component (c.list_name returs e.g. 'generators')  into dict
+        one_port_data[c.list_name] = s
+
+    branch_data = {}
+
+    # iterate in {'Line', 'Link', 'Transformer'}
+    for c in n.iterate_components(n.branch_components):
+        # chose the bus columns ['bus0', 'bus1', ...] the iterate_components might have more than one
+        for col in c.df.columns[c.df.columns.str.startswith("bus")]:
+
+            # get number of the bus you are iterating over
+            end = col[3:]
+
+            # get all data (not time series) for the component which has the specified carrier
+            df = c.df[c.df[col].map(n.buses.carrier).isin(carrier)]
+
+            if df.empty:
+                continue
+
+            # get the active power per time step for all the components and reverse sign
+            s = -c.pnl[f"p{end}"].loc[time, df.index]
+
+            # group data by location and carrier and take sum (delete axis=1 if you only have one time step)
+            s = s.groupby([df[col].map(n.buses.location), df.carrier], axis=1).sum()
+
+            # save data of component (c.list_name returs e.g. 'generators')  into dict
+            branch_data[(c.list_name, end)] = s
+
+    # group by component (level 0) and time step (level2)
+    branch_balance = pd.concat(branch_data).groupby(level=[0, 2]).sum()
+    one_port_balance = pd.concat(one_port_data)
+
+    def skip_tiny(df, threshold=1e-1):
+        return df.where(df.abs() > threshold)
+
+    branch_balance = skip_tiny(branch_balance)
+    one_port_balance = skip_tiny(one_port_balance)
+
+    # reindexing df to use bus and carrier as columns and their corresponding values in the rows (Multiindex)
+    balance = pd.concat([one_port_balance, branch_balance]).stack(level=[0, 1])
+
+    balance.index.set_names(["component", "bus"], level=[0, 2], inplace=True)
+
+    if energy:
+        # multiply balance with 3, so it represents the load over 3 hours (as our data is in 3 hour steps this corresponds to 24 hours, otherwise we would only consider a day with 8 hours)
+        # The weightings applied to each snapshot, so that snapshots can represent more than one hour or fractions of one hour. The objective weightings are used to weight snapshots in the LOPF objective function. The store weightings determine the state of charge change for stores and storage units. The generator weightings are used when calculating global constraints.
+        balance = balance * n.snapshot_weightings.generators
+
+    if aggregate is not None:
+        keep_levels = balance.index.names.difference(aggregate)
+        balance = balance.groupby(level=keep_levels).sum()
+
+    return balance
+
 # mapping of country code
 convert_ISO_3166_2_to_1 = {
 'AF':'AFG',
