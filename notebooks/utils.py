@@ -200,7 +200,7 @@ def nodal_balance(n, carrier, time=slice(None), aggregate=None, energy=True):
     """
     calc energy balance / um of active power per energy carrier and time steps.
     Arguments:
-        carrier: carrier or list of carriers you want to calc the balance
+        carrier: carrier or list of carriers you want to calc the balance (bus carriers)
         time: time period or list of snapshots as strings e.g. "2013-01-01" or ["2013-01-01 00:00:00" , "2013-01-01 03:00:00"]
         aggregate: specify item of ['component', 'snapshot', 'bus', 'carrier'] which will be excluded from Index and aggregated (sum) on it
         energy: if set true the balance is multiplied by 3 to simulate a aggregation of 24 hours simulation not 8 hours simulation (as we have in the network)
