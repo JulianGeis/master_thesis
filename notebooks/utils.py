@@ -1,5 +1,5 @@
 import pandas as pd
-
+from itertools import compress
 
 # Function to extract market values from generators
 def market_values(n, carrier='onwind'):
@@ -29,27 +29,6 @@ def market_values(n, carrier='onwind'):
     return mv
 
 
-def generation(n, carrier='onwind'):
-    """
-    Calculate the generation of a generator (specified by carrier) troughout all 181 market areas as the sum
-    Arguments:
-        n: pypsa network
-        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
-        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
-        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
-        found in n.generators.carrier.unique().tolist()
-    Returns:
-        production of generator spcified by carrier per region
-    """
-
-    gen = n.generators_t.p.loc[:, n.generators.carrier == carrier]
-    gen.columns = gen.columns.map(n.generators.bus)
-    gen.columns = gen.columns.map(n.buses.location)
-    gen = gen.sum()
-
-    return gen
-
-
 def market_values_by_time_index(n, my_dates, carrier="onwind"):
     result = pd.DataFrame(index=my_dates, columns=n.buses.location.unique())
     for my_date in my_dates:
@@ -71,6 +50,47 @@ def market_values_by_time_index(n, my_dates, carrier="onwind"):
     result = result.apply(pd.to_numeric)
 
     return result
+
+
+def generation(n, carrier='onwind'):
+    """
+    Calculate the generation of a generator (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        production of generator spcified by carrier per region
+    """
+
+    gen = n.generators_t.p.loc[:, n.generators.carrier == carrier]
+    gen.columns = gen.columns.map(n.generators.bus)
+    gen.columns = gen.columns.map(n.buses.location)
+    gen = gen.sum()
+
+    return gen
+
+
+def capacity(n, carrier='onwind'):
+    """
+    Calculate the capacity of a generator (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        capacity of generator spcified by carrier per region
+    """
+
+    cap = n.generators.p_nom_opt[n.generators.carrier == carrier]
+    cap.index = cap.index.map(n.generators.bus)
+    cap.index = cap.index.map(n.buses.location)
+
+    return cap
 
 
 def market_values_links(n, carrier="H2 Electrolysis"):
@@ -99,6 +119,7 @@ def market_values_links(n, carrier="H2 Electrolysis"):
     mv.index = mv.index.map(n.buses.location)
     return mv
 
+
 def generation_links(n, carrier="H2 Electrolysis"):
     """
     Calculate the generation of a link (specified by carrier) throughout all 181 market areas as the sum
@@ -115,6 +136,24 @@ def generation_links(n, carrier="H2 Electrolysis"):
     gen.columns = gen.columns.map(n.buses.location)
     gen = gen.sum()
     return gen
+
+
+def capacity_links(n, carrier="H2 Electrolysis"):
+    """
+    Calculate the capacity of a link (specified by carrier) throughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        capacity of carrier per region
+    """
+
+    cap = n.links.p_nom_opt[n.links.carrier == carrier]
+    cap.index = cap.index.map(n.links.bus1)
+    cap = cap.groupby(cap.index, axis=0).sum()
+    cap.index = cap.index.map(n.buses.location)
+
+    return cap
 
 
 def market_values_links_con(n, carrier="H2 Electrolysis"):
@@ -157,6 +196,7 @@ def congestion_rent_link(n, carrier="H2 Electrolysis"):
                 n.buses_t.marginal_price[n.links[bus][n.links.carrier == carrier]].values)
     return cr
 
+
 def market_values_storage_units(n, carrier="hydro"):
     """
     Calculate the market values of the generation of a storage unit (specified by carrier) throughout all 181 market
@@ -177,6 +217,7 @@ def market_values_storage_units(n, carrier="hydro"):
     mv.index = mv.index.map(n.buses.location)
     return mv
 
+
 def generation_storage_units(n, carrier='hydro'):
     """
     Calculate the generation (=dispatch) of a storage unit (specified by carrier) troughout all 181 market areas as the sum
@@ -194,6 +235,25 @@ def generation_storage_units(n, carrier='hydro'):
     gen.columns = gen.columns.map(n.buses.location)
     gen = gen.sum()
     return gen
+
+
+def capacity_storage_units(n, carrier='hydro'):
+    """
+    Calculate the capacity of a storage unit (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        capacity of generator spcified by carrier per region
+    """
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
+    cap.index = cap.index.map(n.storage_units.bus)
+    cap.index = cap.index.map(n.buses.location)
+
+    return cap
 
 
 def nodal_balance(n, carrier, time=slice(None), aggregate=None, energy=True):
@@ -227,7 +287,7 @@ def nodal_balance(n, carrier, time=slice(None), aggregate=None, energy=True):
         # group data by location and carrier and take sum (delete axis if you only have one time step)
         s = s.groupby([df.bus.map(n.buses.location), df.carrier], axis=1).sum()
 
-        # save data of component (c.list_name returs e.g. 'generators')  into dict
+        # save data of component (c.list_name returns e.g. 'generators')  into dict
         one_port_data[c.list_name] = s
 
     branch_data = {}
@@ -281,256 +341,299 @@ def nodal_balance(n, carrier, time=slice(None), aggregate=None, energy=True):
 
     return balance
 
-# mapping of country code
-convert_ISO_3166_2_to_1 = {
-'AF':'AFG',
-'AX':'ALA',
-'AL':'ALB',
-'DZ':'DZA',
-'AS':'ASM',
-'AD':'AND',
-'AO':'AGO',
-'AI':'AIA',
-'AQ':'ATA',
-'AG':'ATG',
-'AR':'ARG',
-'AM':'ARM',
-'AW':'ABW',
-'AU':'AUS',
-'AT':'AUT',
-'AZ':'AZE',
-'BS':'BHS',
-'BH':'BHR',
-'BD':'BGD',
-'BB':'BRB',
-'BY':'BLR',
-'BE':'BEL',
-'BZ':'BLZ',
-'BJ':'BEN',
-'BM':'BMU',
-'BT':'BTN',
-'BO':'BOL',
-'BA':'BIH',
-'BW':'BWA',
-'BV':'BVT',
-'BR':'BRA',
-'IO':'IOT',
-'BN':'BRN',
-'BG':'BGR',
-'BF':'BFA',
-'BI':'BDI',
-'KH':'KHM',
-'CM':'CMR',
-'CA':'CAN',
-'CV':'CPV',
-'KY':'CYM',
-'CF':'CAF',
-'TD':'TCD',
-'CL':'CHL',
-'CN':'CHN',
-'CX':'CXR',
-'CC':'CCK',
-'CO':'COL',
-'KM':'COM',
-'CG':'COG',
-'CD':'COD',
-'CK':'COK',
-'CR':'CRI',
-'CI':'CIV',
-'HR':'HRV',
-'CU':'CUB',
-'CY':'CYP',
-'CZ':'CZE',
-'DK':'DNK',
-'DJ':'DJI',
-'DM':'DMA',
-'DO':'DOM',
-'EC':'ECU',
-'EG':'EGY',
-'SV':'SLV',
-'GQ':'GNQ',
-'ER':'ERI',
-'EE':'EST',
-'ET':'ETH',
-'FK':'FLK',
-'FO':'FRO',
-'FJ':'FJI',
-'FI':'FIN',
-'FR':'FRA',
-'GF':'GUF',
-'PF':'PYF',
-'TF':'ATF',
-'GA':'GAB',
-'GM':'GMB',
-'GE':'GEO',
-'DE':'DEU',
-'GH':'GHA',
-'GI':'GIB',
-'GR':'GRC',
-'GL':'GRL',
-'GD':'GRD',
-'GP':'GLP',
-'GU':'GUM',
-'GT':'GTM',
-'GG':'GGY',
-'GN':'GIN',
-'GW':'GNB',
-'GY':'GUY',
-'HT':'HTI',
-'HM':'HMD',
-'VA':'VAT',
-'HN':'HND',
-'HK':'HKG',
-'HU':'HUN',
-'IS':'ISL',
-'IN':'IND',
-'ID':'IDN',
-'IR':'IRN',
-'IQ':'IRQ',
-'IE':'IRL',
-'IM':'IMN',
-'IL':'ISR',
-'IT':'ITA',
-'JM':'JAM',
-'JP':'JPN',
-'JE':'JEY',
-'JO':'JOR',
-'KZ':'KAZ',
-'KE':'KEN',
-'KI':'KIR',
-'KP':'PRK',
-'KR':'KOR',
-'KW':'KWT',
-'KG':'KGZ',
-'LA':'LAO',
-'LV':'LVA',
-'LB':'LBN',
-'LS':'LSO',
-'LR':'LBR',
-'LY':'LBY',
-'LI':'LIE',
-'LT':'LTU',
-'LU':'LUX',
-'MO':'MAC',
-'MK':'MKD',
-'MG':'MDG',
-'MW':'MWI',
-'MY':'MYS',
-'MV':'MDV',
-'ML':'MLI',
-'MT':'MLT',
-'MH':'MHL',
-'MQ':'MTQ',
-'MR':'MRT',
-'MU':'MUS',
-'YT':'MYT',
-'MX':'MEX',
-'FM':'FSM',
-'MD':'MDA',
-'MC':'MCO',
-'MN':'MNG',
-'ME':'MNE',
-'MS':'MSR',
-'MA':'MAR',
-'MZ':'MOZ',
-'MM':'MMR',
-'NA':'NAM',
-'NR':'NRU',
-'NP':'NPL',
-'NL':'NLD',
-'AN':'ANT',
-'NC':'NCL',
-'NZ':'NZL',
-'NI':'NIC',
-'NE':'NER',
-'NG':'NGA',
-'NU':'NIU',
-'NF':'NFK',
-'MP':'MNP',
-'NO':'NOR',
-'OM':'OMN',
-'PK':'PAK',
-'PW':'PLW',
-'PS':'PSE',
-'PA':'PAN',
-'PG':'PNG',
-'PY':'PRY',
-'PE':'PER',
-'PH':'PHL',
-'PN':'PCN',
-'PL':'POL',
-'PT':'PRT',
-'PR':'PRI',
-'QA':'QAT',
-'RE':'REU',
-'RO':'ROU',
-'RU':'RUS',
-'RW':'RWA',
-'BL':'BLM',
-'SH':'SHN',
-'KN':'KNA',
-'LC':'LCA',
-'MF':'MAF',
-'PM':'SPM',
-'VC':'VCT',
-'WS':'WSM',
-'SM':'SMR',
-'ST':'STP',
-'SA':'SAU',
-'SN':'SEN',
-'RS':'SRB',
-'SC':'SYC',
-'SL':'SLE',
-'SG':'SGP',
-'SK':'SVK',
-'SI':'SVN',
-'SB':'SLB',
-'SO':'SOM',
-'ZA':'ZAF',
-'GS':'SGS',
-'ES':'ESP',
-'LK':'LKA',
-'SD':'SDN',
-'SR':'SUR',
-'SJ':'SJM',
-'SZ':'SWZ',
-'SE':'SWE',
-'CH':'CHE',
-'SY':'SYR',
-'TW':'TWN',
-'TJ':'TJK',
-'TZ':'TZA',
-'TH':'THA',
-'TL':'TLS',
-'TG':'TGO',
-'TK':'TKL',
-'TO':'TON',
-'TT':'TTO',
-'TN':'TUN',
-'TR':'TUR',
-'TM':'TKM',
-'TC':'TCA',
-'TV':'TUV',
-'UG':'UGA',
-'UA':'UKR',
-'AE':'ARE',
-'GB':'GBR',
-'US':'USA',
-'UM':'UMI',
-'UY':'URY',
-'UZ':'UZB',
-'VU':'VUT',
-'VE':'VEN',
-'VN':'VNM',
-'VG':'VGB',
-'VI':'VIR',
-'WF':'WLF',
-'EH':'ESH',
-'YE':'YEM',
-'ZM':'ZMB',
-'ZW':'ZWE'
+
+def get_condense_sum(df, groups, groups_name, return_original=False):
+    """
+    return condensed df, that has been groupeb by condense groups
+    Arguments:
+        df: df you want to condense (carriers have to be in the columns)
+        groups: group lables you want to condense on
+        groups_name: name of the new grouped column
+        return_original: boolean to specify if the original df should also be returned
+    Returns:
+        condensed df
+    """
+    result = df
+
+    for group, name in zip(groups, groups_name):
+        # check if carrier are in columns
+        bool = [c in df.columns for c in group]
+        # updated to carriers within group that are in columns
+        group = list(compress(group, bool))
+
+        result[name] = df[group].sum(axis=1)
+        result.drop(group, axis=1, inplace=True)
+
+    if return_original:
+        return result, df
+
+    return result
+
+# definitions
+
+resistive_heater = ["residential rural resistive heater", "services rural resistive heater", "residential urban decentral resistive heater", "services urban decentral resistive heater", "urban central resistive heater" ]
+gas_boiler = ["residential rural gas boiler", "services rural gas boiler", "residential urban decentral gas boiler", "services urban decentral gas boiler", "urban central gas boiler"]
+heat_pump = ["residential rural ground heat pump", "services rural ground heat pump", "residential urban decentral air heat pump", "services urban decentral air heat pump", "urban central air heat pump"]
+water_tanks_charger = ["residential rural water tanks charger", "services rural water tanks charger", "residential urban decentral water tanks charger", "services urban decentral water tanks charger", "urban central water tanks charger"]
+water_tanks_discharger = ["residential rural water tanks discharger", "services rural water tanks discharger", "residential urban decentral water tanks discharger", "services urban decentral water tanks discharger", "urban central water tanks discharger"]
+solar_thermal = ["residential urban decentral solar thermal", "services urban decentral solar thermal", "urban central solar thermal", "residential rural solar thermal", "services rural solar thermal"]
+
+carrier_renaming = {
+    'urban central solid biomass CHP CC': 'biomass CHP CC',
+    'urban central solid biomass CHP': 'biomass CHP',
+    'urban central gas CHP': 'gas CHP',
+    'urban central gas CHP CC': 'gas CHP CC',
 }
 
+# mapping of country code
+convert_ISO_3166_2_to_1 = {
+    'AF': 'AFG',
+    'AX': 'ALA',
+    'AL': 'ALB',
+    'DZ': 'DZA',
+    'AS': 'ASM',
+    'AD': 'AND',
+    'AO': 'AGO',
+    'AI': 'AIA',
+    'AQ': 'ATA',
+    'AG': 'ATG',
+    'AR': 'ARG',
+    'AM': 'ARM',
+    'AW': 'ABW',
+    'AU': 'AUS',
+    'AT': 'AUT',
+    'AZ': 'AZE',
+    'BS': 'BHS',
+    'BH': 'BHR',
+    'BD': 'BGD',
+    'BB': 'BRB',
+    'BY': 'BLR',
+    'BE': 'BEL',
+    'BZ': 'BLZ',
+    'BJ': 'BEN',
+    'BM': 'BMU',
+    'BT': 'BTN',
+    'BO': 'BOL',
+    'BA': 'BIH',
+    'BW': 'BWA',
+    'BV': 'BVT',
+    'BR': 'BRA',
+    'IO': 'IOT',
+    'BN': 'BRN',
+    'BG': 'BGR',
+    'BF': 'BFA',
+    'BI': 'BDI',
+    'KH': 'KHM',
+    'CM': 'CMR',
+    'CA': 'CAN',
+    'CV': 'CPV',
+    'KY': 'CYM',
+    'CF': 'CAF',
+    'TD': 'TCD',
+    'CL': 'CHL',
+    'CN': 'CHN',
+    'CX': 'CXR',
+    'CC': 'CCK',
+    'CO': 'COL',
+    'KM': 'COM',
+    'CG': 'COG',
+    'CD': 'COD',
+    'CK': 'COK',
+    'CR': 'CRI',
+    'CI': 'CIV',
+    'HR': 'HRV',
+    'CU': 'CUB',
+    'CY': 'CYP',
+    'CZ': 'CZE',
+    'DK': 'DNK',
+    'DJ': 'DJI',
+    'DM': 'DMA',
+    'DO': 'DOM',
+    'EC': 'ECU',
+    'EG': 'EGY',
+    'SV': 'SLV',
+    'GQ': 'GNQ',
+    'ER': 'ERI',
+    'EE': 'EST',
+    'ET': 'ETH',
+    'FK': 'FLK',
+    'FO': 'FRO',
+    'FJ': 'FJI',
+    'FI': 'FIN',
+    'FR': 'FRA',
+    'GF': 'GUF',
+    'PF': 'PYF',
+    'TF': 'ATF',
+    'GA': 'GAB',
+    'GM': 'GMB',
+    'GE': 'GEO',
+    'DE': 'DEU',
+    'GH': 'GHA',
+    'GI': 'GIB',
+    'GR': 'GRC',
+    'GL': 'GRL',
+    'GD': 'GRD',
+    'GP': 'GLP',
+    'GU': 'GUM',
+    'GT': 'GTM',
+    'GG': 'GGY',
+    'GN': 'GIN',
+    'GW': 'GNB',
+    'GY': 'GUY',
+    'HT': 'HTI',
+    'HM': 'HMD',
+    'VA': 'VAT',
+    'HN': 'HND',
+    'HK': 'HKG',
+    'HU': 'HUN',
+    'IS': 'ISL',
+    'IN': 'IND',
+    'ID': 'IDN',
+    'IR': 'IRN',
+    'IQ': 'IRQ',
+    'IE': 'IRL',
+    'IM': 'IMN',
+    'IL': 'ISR',
+    'IT': 'ITA',
+    'JM': 'JAM',
+    'JP': 'JPN',
+    'JE': 'JEY',
+    'JO': 'JOR',
+    'KZ': 'KAZ',
+    'KE': 'KEN',
+    'KI': 'KIR',
+    'KP': 'PRK',
+    'KR': 'KOR',
+    'KW': 'KWT',
+    'KG': 'KGZ',
+    'LA': 'LAO',
+    'LV': 'LVA',
+    'LB': 'LBN',
+    'LS': 'LSO',
+    'LR': 'LBR',
+    'LY': 'LBY',
+    'LI': 'LIE',
+    'LT': 'LTU',
+    'LU': 'LUX',
+    'MO': 'MAC',
+    'MK': 'MKD',
+    'MG': 'MDG',
+    'MW': 'MWI',
+    'MY': 'MYS',
+    'MV': 'MDV',
+    'ML': 'MLI',
+    'MT': 'MLT',
+    'MH': 'MHL',
+    'MQ': 'MTQ',
+    'MR': 'MRT',
+    'MU': 'MUS',
+    'YT': 'MYT',
+    'MX': 'MEX',
+    'FM': 'FSM',
+    'MD': 'MDA',
+    'MC': 'MCO',
+    'MN': 'MNG',
+    'ME': 'MNE',
+    'MS': 'MSR',
+    'MA': 'MAR',
+    'MZ': 'MOZ',
+    'MM': 'MMR',
+    'NA': 'NAM',
+    'NR': 'NRU',
+    'NP': 'NPL',
+    'NL': 'NLD',
+    'AN': 'ANT',
+    'NC': 'NCL',
+    'NZ': 'NZL',
+    'NI': 'NIC',
+    'NE': 'NER',
+    'NG': 'NGA',
+    'NU': 'NIU',
+    'NF': 'NFK',
+    'MP': 'MNP',
+    'NO': 'NOR',
+    'OM': 'OMN',
+    'PK': 'PAK',
+    'PW': 'PLW',
+    'PS': 'PSE',
+    'PA': 'PAN',
+    'PG': 'PNG',
+    'PY': 'PRY',
+    'PE': 'PER',
+    'PH': 'PHL',
+    'PN': 'PCN',
+    'PL': 'POL',
+    'PT': 'PRT',
+    'PR': 'PRI',
+    'QA': 'QAT',
+    'RE': 'REU',
+    'RO': 'ROU',
+    'RU': 'RUS',
+    'RW': 'RWA',
+    'BL': 'BLM',
+    'SH': 'SHN',
+    'KN': 'KNA',
+    'LC': 'LCA',
+    'MF': 'MAF',
+    'PM': 'SPM',
+    'VC': 'VCT',
+    'WS': 'WSM',
+    'SM': 'SMR',
+    'ST': 'STP',
+    'SA': 'SAU',
+    'SN': 'SEN',
+    'RS': 'SRB',
+    'SC': 'SYC',
+    'SL': 'SLE',
+    'SG': 'SGP',
+    'SK': 'SVK',
+    'SI': 'SVN',
+    'SB': 'SLB',
+    'SO': 'SOM',
+    'ZA': 'ZAF',
+    'GS': 'SGS',
+    'ES': 'ESP',
+    'LK': 'LKA',
+    'SD': 'SDN',
+    'SR': 'SUR',
+    'SJ': 'SJM',
+    'SZ': 'SWZ',
+    'SE': 'SWE',
+    'CH': 'CHE',
+    'SY': 'SYR',
+    'TW': 'TWN',
+    'TJ': 'TJK',
+    'TZ': 'TZA',
+    'TH': 'THA',
+    'TL': 'TLS',
+    'TG': 'TGO',
+    'TK': 'TKL',
+    'TO': 'TON',
+    'TT': 'TTO',
+    'TN': 'TUN',
+    'TR': 'TUR',
+    'TM': 'TKM',
+    'TC': 'TCA',
+    'TV': 'TUV',
+    'UG': 'UGA',
+    'UA': 'UKR',
+    'AE': 'ARE',
+    'GB': 'GBR',
+    'US': 'USA',
+    'UM': 'UMI',
+    'UY': 'URY',
+    'UZ': 'UZB',
+    'VU': 'VUT',
+    'VE': 'VEN',
+    'VN': 'VNM',
+    'VG': 'VGB',
+    'VI': 'VIR',
+    'WF': 'WLF',
+    'EH': 'ESH',
+    'YE': 'YEM',
+    'ZM': 'ZMB',
+    'ZW': 'ZWE'
+}
 
 carrier_colors = {
     'AC': 'dimgrey',
@@ -561,6 +664,8 @@ carrier_colors = {
     'electricity distribution grid': 'thistle',
     'gas': 'orange',
     'home battery': 'violet',
+    'home battery charger': 'blueviolet',
+    'home battery discharger': 'plum',
     'hydro': 'cornflowerblue',
     'industry electricity': 'rosybrown',
     'land transport EV': 'chocolate',
@@ -608,15 +713,15 @@ carrier_colors = {
     'urban central resistive heater': 'lime',
     'urban central solar thermal': 'pink',
     'urban central solid biomass CHP CC': 'navajowhite',
-    'solid biomass CHP CC': 'navajowhite',
+    'biomass CHP CC': 'navajowhite',
     'urban central solid biomass CHP': 'sandybrown',
-    'solid biomass CHP': 'sandybrown',
+    'biomass CHP': 'sandybrown',
     'urban central water tanks charger': 'skyblue',
     'urban central water tanks discharger': 'mediumvioletred',
     'resistive heater': 'seagreen',
     'gas boiler': 'khaki',
     'heat pump': 'darkred',
-    'water tanks_charger': 'cadetblue',
-    'water tanks_discharger': 'palevioletred',
+    'water tanks charger': 'cadetblue',
+    'water tanks discharger': 'palevioletred',
     'solar thermal': 'tomato'
 }
