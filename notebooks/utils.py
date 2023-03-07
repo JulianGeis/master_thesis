@@ -123,6 +123,7 @@ def market_values_links(n, carrier="H2 Electrolysis"):
 def generation_links(n, carrier="H2 Electrolysis"):
     """
     Calculate the generation of a link (specified by carrier) throughout all 181 market areas as the sum
+    for the first bus (p1).
     Arguments:
         n: pypsa network
         carrier: energy carrier or technology
@@ -130,7 +131,7 @@ def generation_links(n, carrier="H2 Electrolysis"):
         generation of carrier per region
     """
 
-    gen = abs(n.links_t.p1.loc[:, n.links.carrier == carrier])
+    gen = -n.links_t.p1.loc[:, n.links.carrier == carrier]
     gen.columns = gen.columns.map(n.links.bus1)
     gen = gen.groupby(gen.columns, axis=1).sum()
     gen.columns = gen.columns.map(n.buses.location)
