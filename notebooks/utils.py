@@ -386,6 +386,13 @@ carrier_renaming = {
     'urban central gas CHP CC': 'gas CHP CC',
 }
 
+carrier_renaming_reverse = {
+    'biomass CHP CC': 'urban central solid biomass CHP CC',
+    'biomass CHP' :'urban central solid biomass CHP' ,
+    'gas CHP': 'urban central gas CHP' ,
+    'gas CHP CC' : 'urban central gas CHP CC'
+}
+
 # mapping of country code
 convert_ISO_3166_2_to_1 = {
     'AF': 'AFG',
