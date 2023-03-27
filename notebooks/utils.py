@@ -370,6 +370,65 @@ def get_condense_sum(df, groups, groups_name, return_original=False):
 
     return result
 
+def time_stored_LIFO(charge):
+    """
+    return df which assings every stored unit of energy the stored time according to LIFO (Last in - First out) principle
+    Arguments:
+        charge: 1-d df of the state of charge of a store / storage unit
+    Returns:
+        df with additional amounts and timedeltas of storage time
+    """
+
+    # add difference of state of charge time series and assign first difference the state at the beginning
+    result = pd.concat([charge, charge.diff(), charge.diff()], axis=1)
+    result.columns = ["state_of_charge", "diff_fixed", "diff"]
+    result.loc["2013-01-01 00:00:00", "diff"] = result.loc["2013-01-01 00:00:00", "state_of_charge"]
+    result.loc["2013-01-01 00:00:00", "diff_fixed"] = result.loc["2013-01-01 00:00:00", "state_of_charge"]
+
+    for snap in result.index:
+        if result.loc[snap, "diff"] < 0:
+            #current discharge (negative)
+            discharge = abs(result.loc[snap, "diff"])
+            i = 1
+            # while discharged amount not 0 find last charging date and amount and subtract discharged amount from it
+            while discharge != 0:
+
+                # get last charging (positive diff) that is not used yet (not 0)
+                last_charge = result.loc[:snap, "diff"][result.loc[:snap, "diff"] > 0][-1]
+                # get index of last charging
+                last_index = result.loc[:snap, "diff"][result.loc[:snap, "diff"] > 0].index[-1]
+
+                # and check if it is larger than the discharge value
+                if last_charge > discharge:
+
+                    # reduce last charging by discharged amount
+                    result.loc[last_index, "diff"] = result.loc[last_index, "diff"] - discharge
+
+                    # save the amount that was discharged and the time difference between the discharge and the charging
+                    result.loc[snap, f"amount{i}"] = discharge
+                    result.loc[snap, f"timedelta{i}"] = snap - last_index
+
+                    # update discharge
+                    discharge = 0
+
+                # if last charging was not enough
+                else:
+
+                    # save the amount that was discharged and the time difference between the discharge and the charging
+                    result.loc[snap, f"amount{i}"] = last_charge
+                    result.loc[snap, f"timedelta{i}"] = snap - last_index
+
+                    # reduce last charging completely
+                    result.loc[last_index, "diff"] = 0
+
+                    # update discharge
+                    discharge = discharge - last_charge
+
+                    # update i
+                    i += 1
+
+    return result
+
 # definitions
 
 resistive_heater = ["residential rural resistive heater", "services rural resistive heater", "residential urban decentral resistive heater", "services urban decentral resistive heater", "urban central resistive heater" ]
