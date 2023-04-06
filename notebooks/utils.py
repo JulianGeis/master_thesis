@@ -229,7 +229,7 @@ def generation_storage_units(n, carrier='hydro'):
         'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
         found in n.generators.carrier.unique().tolist()
     Returns:
-        production of generator spcified by carrier per region
+        production of generator specified by carrier per region
     """
     gen = n.storage_units_t.p_dispatch.loc[:, n.storage_units.carrier == carrier]
     gen.columns = gen.columns.map(n.storage_units.bus)
@@ -790,5 +790,7 @@ carrier_colors = {
     'heat pump': 'darkred',
     'water tanks charger': 'cadetblue',
     'water tanks discharger': 'palevioletred',
-    'solar thermal': 'tomato'
+    'solar thermal': 'tomato',
+    'H2 pipeline': 'pink',
+    'H2 pipeline retrofitted': 'violet',
 }
