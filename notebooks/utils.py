@@ -443,13 +443,17 @@ carrier_renaming = {
     'urban central solid biomass CHP': 'biomass CHP',
     'urban central gas CHP': 'gas CHP',
     'urban central gas CHP CC': 'gas CHP CC',
+    'urban central air heat pump': 'air heat pump',
+    'urban central resistive heater': 'resistive heater'
 }
 
 carrier_renaming_reverse = {
     'biomass CHP CC': 'urban central solid biomass CHP CC',
     'biomass CHP' :'urban central solid biomass CHP' ,
     'gas CHP': 'urban central gas CHP' ,
-    'gas CHP CC' : 'urban central gas CHP CC'
+    'gas CHP CC' : 'urban central gas CHP CC',
+    'air heat pump' : 'urban central air heat pump',
+    'resistive heater': 'urban central resistive heater'
 }
 
 # mapping of country code
