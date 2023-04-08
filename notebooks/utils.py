@@ -798,3 +798,62 @@ carrier_colors = {
     'H2 pipeline': 'pink',
     'H2 pipeline retrofitted': 'violet',
 }
+
+c_el_gen_s = [
+    "onwind",
+    "solar",
+    "offwind-dc",
+    "hydro",
+    "solar rooftop",
+    "battery discharger",
+    "offwind-ac",
+    "ror",
+    "urban central gas CHP",
+    "urban central solid biomass CHP CC",
+    "V2G",
+    "PHS"
+]
+
+c_el_con_s = [
+    "H2 Electrolysis",
+    "BEV charger",
+    "battery charger",
+    "urban central air heat pump",
+    "urban central resistive heater",
+    "PHS",
+]
+
+carriers_h2_gen = [
+    "H2 Electrolysis",
+    "SMR CC",
+    "SMR"
+]
+
+carriers_h2_con = [
+    "H2 liquefaction",
+    "H2 Fuel Cell"
+    "Sabatier",
+    "Fischer-Tropsch"
+]
+
+carriers_heat_gen1 = [
+    "urban central air heat pump"
+    "urban central gas boiler"
+    "urban central resistive heater"
+    "urban central water tanks discharger"
+    "urban central solar thermal"
+]
+
+carriers_heat_gen2 = [
+    "urban central solid biomass CHP CC",
+    "urban central gas CHP",
+    "urban central solid biomass CHP",
+    "H2 Fuel Cell",
+    "urban central gas CHP CC",
+    "DAC"
+]
+
+carriers_heat_con = [
+"urban central water tanks charger",
+]
+
