@@ -83,7 +83,7 @@ def capacity(n, carrier='onwind'):
         'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
         found in n.generators.carrier.unique().tolist()
     Returns:
-        capacity of generator spcified by carrier per region
+        capacity of generator specified by carrier per region
     """
 
     cap = n.generators.p_nom_opt[n.generators.carrier == carrier]
@@ -248,7 +248,7 @@ def capacity_storage_units(n, carrier='hydro'):
         'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
         found in n.generators.carrier.unique().tolist()
     Returns:
-        capacity of generator spcified by carrier per region
+        capacity of generator specified by carrier per region
     """
     cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
     cap.index = cap.index.map(n.storage_units.bus)
@@ -742,7 +742,7 @@ carrier_colors = {
     'land transport EV': 'chocolate',
     'land transport fuel cell': 'peru',
     'offwind-ac': 'cyan',
-    'offwind-dc': 'r',
+    'offwind-dc': 'maroon',
     'oil': 'k',
     'onwind': 'green',
     'residential rural gas boiler': 'gold',
