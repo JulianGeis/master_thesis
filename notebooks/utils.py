@@ -138,6 +138,26 @@ def generation_links(n, carrier="H2 Electrolysis"):
     gen = gen.sum()
     return gen
 
+def generation_links_bus(n, carrier="H2 Electrolysis", bus_no=1):
+    """
+    Calculate the generation of a link (specified by carrier) throughout all 181 market areas as the sum
+    for the first bus (p1).
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        generation of carrier per region
+    """
+
+    # take negative: positive is generationa and negative is consumption now (p0: Active power at bus0 (positive if branch is withdrawing power from bus0).
+    gen = n.links_t[f"p{bus_no}"].loc[:, n.links.carrier == carrier] * -1
+    gen.columns = gen.columns.map(n.links[f"bus{bus_no}"])
+    gen = gen.groupby(gen.columns, axis=1).sum()
+    gen.columns = gen.columns.map(n.buses.location)
+    gen = gen.sum()
+    gen = gen.groupby(gen.index, axis=0).sum()
+    return gen
+
 
 def capacity_links(n, carrier="H2 Electrolysis"):
     """
@@ -150,6 +170,28 @@ def capacity_links(n, carrier="H2 Electrolysis"):
     """
 
     cap = n.links.p_nom_opt[n.links.carrier == carrier]
+    cap.index = cap.index.map(n.links.bus1)
+    cap = cap.groupby(cap.index, axis=0).sum()
+    cap.index = cap.index.map(n.buses.location)
+
+    return cap
+
+def capacity_links_bus(n, carrier="H2 Electrolysis", bus_no=1):
+    """
+    Calculate the capacity of a link (specified by carrier) throughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        capacity of carrier per region
+    """
+    if bus_no == 0:
+        cap = n.links.p_nom_opt[n.links.carrier == carrier]
+    elif bus_no == 1:
+        cap = n.links.p_nom_opt[n.links.carrier == carrier] * n.links[n.links.carrier == carrier]["efficiency"]
+    else:
+        cap = n.links.p_nom_opt[n.links.carrier == carrier] * n.links[n.links.carrier == carrier][f"efficiency{bus_no}"]
+
     cap.index = cap.index.map(n.links.bus1)
     cap = cap.groupby(cap.index, axis=0).sum()
     cap.index = cap.index.map(n.buses.location)
@@ -174,6 +216,28 @@ def market_values_links_con(n, carrier="H2 Electrolysis"):
     lmp = n.buses_t.marginal_price.loc[:, con.columns]
     mv = (con * lmp).sum() / con.sum()
     mv.index = mv.index.map(n.buses.location)
+    return mv
+
+def market_values_links_bus(n, carrier="H2 Electrolysis", bus_no=0):
+    """
+    Calculate the market values of the consumption of a link (specified by carrier) throughout all 181 market areas
+    as the sum product of consumption and locational marginal prices of consumption source  divided by the sum of
+    consumption
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        consumption market value of carrier per region
+    """
+
+    gen = abs(n.links_t[f"p{bus_no}"].loc[:, n.links.carrier == carrier])
+    gen.columns = gen.columns.map(n.links[f"bus{bus_no}"])
+    gen = gen.groupby(gen.columns, axis=1).sum()
+    lmp = n.buses_t.marginal_price.loc[:, gen.columns]
+    mv = (gen * lmp).sum() / gen.sum()
+    mv.index = mv.index.map(n.buses.location)
+    # take mean if mv is present at different buses
+    mv = mv.groupby(mv.index, axis=0).mean()
     return mv
 
 
@@ -218,18 +282,39 @@ def market_values_storage_units(n, carrier="hydro"):
     mv.index = mv.index.map(n.buses.location)
     return mv
 
+def market_values_storage_units_con(n, carrier="hydro"):
+    """
+    Calculate the market values of the consumption (purchasing prices) of a storage unit (specified by carrier) throughout all 181 market
+    areas as the sum product of generation / dispatch and locational marginal prices of consumption bus divided by
+    the sum of generation
+
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier or technology
+    Returns:
+        purchasing price of carrier per region
+    """
+
+    # consumption of su
+    con = n.storage_units_t.p_store.loc[:, n.storage_units.carrier == carrier]
+    con.columns = con.columns.map(n.storage_units.bus)
+    # get lmp of buses where the su consumes from
+    lmp_con = n.buses_t.marginal_price.loc[:, con.columns]
+    # calculate costs for every time step and location: con * lmp_con
+    # calc consumption weighted average per location: overall cost per location / overall generation per location
+    cost_mv = (con * lmp_con).sum() / con.sum()
+    return cost_mv
+
 
 def generation_storage_units(n, carrier='hydro'):
     """
     Calculate the generation (=dispatch) of a storage unit (specified by carrier) troughout all 181 market areas as the sum
     Arguments:
         n: pypsa network
-        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
-        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
-        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
-        found in n.generators.carrier.unique().tolist()
+        carrier: energy carrier | working for following `carrier`: ['hydro', 'PHS']
+        found in n.storage_units.carrier.unique().tolist()
     Returns:
-        production of generator specified by carrier per region
+        generation of storage_units specified by carrier per region
     """
     gen = n.storage_units_t.p_dispatch.loc[:, n.storage_units.carrier == carrier]
     gen.columns = gen.columns.map(n.storage_units.bus)
@@ -237,8 +322,42 @@ def generation_storage_units(n, carrier='hydro'):
     gen = gen.sum()
     return gen
 
+def consumption_storage_units(n, carrier='hydro'):
+    """
+    Calculate the consumption (=store) of a storage unit (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['hydro', 'PHS']
+        found in n.storage_units.carrier.unique().tolist()
+    Returns:
+        production of storage_units specified by carrier per region
+    """
+    con = n.storage_units_t.p_store.loc[:, n.storage_units.carrier == carrier]
+    con.columns = con.columns.map(n.storage_units.bus)
+    con.columns = con.columns.map(n.buses.location)
+    con = con.sum() * -1
+    return con
+
 
 def capacity_storage_units(n, carrier='hydro'):
+    """
+    Calculate the capacity of a storage unit (specified by carrier) troughout all 181 market areas as the sum
+    Arguments:
+        n: pypsa network
+        carrier: energy carrier | working for following `carrier`: ['offwind-ac','onwind','solar', 'ror', 'offwind-dc', 'gas',
+        'residential rural solar thermal', 'services rural solar thermal', 'residential urban decentral solar thermal',
+        'services urban decentral solar thermal', 'urban central solar thermal', 'oil', 'solar rooftop']
+        found in n.generators.carrier.unique().tolist()
+    Returns:
+        capacity of generator specified by carrier per region
+    """
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
+    cap.index = cap.index.map(n.storage_units.bus)
+    cap.index = cap.index.map(n.buses.location)
+
+    return cap
+
+def capacity_storage_units_con(n, carrier='hydro'):
     """
     Calculate the capacity of a storage unit (specified by carrier) troughout all 181 market areas as the sum
     Arguments:
