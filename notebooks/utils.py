@@ -192,9 +192,10 @@ def capacity_links_bus(n, carrier="H2 Electrolysis", bus_no=1):
     else:
         cap = n.links.p_nom_opt[n.links.carrier == carrier] * n.links[n.links.carrier == carrier][f"efficiency{bus_no}"]
 
-    cap.index = cap.index.map(n.links.bus1)
+    cap.index = cap.index.map(n.links[f"bus{bus_no}"])
     cap = cap.groupby(cap.index, axis=0).sum()
     cap.index = cap.index.map(n.buses.location)
+    cap = cap.groupby(cap.index, axis=0).sum()
 
     return cap
 
@@ -942,15 +943,15 @@ c_el_con_s = [
     "PHS",
 ]
 
-carriers_h2_gen = [
+c_h2_gen = [
     "H2 Electrolysis",
     "SMR CC",
     "SMR"
 ]
 
-carriers_h2_con = [
+c_h2_con = [
     "H2 liquefaction",
-    "H2 Fuel Cell"
+    "H2 Fuel Cell",
     "Sabatier",
     "Fischer-Tropsch"
 ]
@@ -976,3 +977,31 @@ carriers_heat_con = [
 "urban central water tanks charger",
 ]
 
+c_tags = {
+    'AC': "el",
+    'battery': "el",
+    'Li ion': "el",
+    'low voltage': "el",
+    'home battery': "el",
+    'H2': "h2",
+    'H2 liquid': "h2",
+    'residential rural heat': "heat",
+    'residential rural water tanks': "heat",
+    'services rural heat': "heat",
+    'services rural water tanks': "heat",
+    'residential urban decentral heat': "heat",
+    'residential urban decentral water tanks': "heat",
+    'services urban decentral heat': "heat",
+    'services urban decentral water tanks': "heat",
+    'urban central heat': "heat",
+    'urban central water tanks': "heat",
+    'gas': "gas",
+    'biogas': "gas",
+    'gas for industry': "gas",
+    'oil': "oil",
+    'solid biomass': "biom",
+    'solid biomass for industry': "biom",
+    'co2': "co2",
+    'co2 stored': "co2",
+    'process emissions': "pe"
+}
