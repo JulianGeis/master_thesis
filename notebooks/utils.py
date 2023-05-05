@@ -1,6 +1,12 @@
 import pandas as pd
 from itertools import compress
 
+# Plot figsizes
+# single map: (7,6)
+# map with two columns and x rows: ()
+# single heatmap
+# heatmap with two columns and x rows:
+
 # Function to extract market values from generators
 def market_values(n, carrier='onwind'):
     """
@@ -352,7 +358,7 @@ def capacity_storage_units(n, carrier='hydro'):
     Returns:
         capacity of generator specified by carrier per region
     """
-    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier] * n.storage_units.efficiency_dispatch[n.storage_units.carrier == carrier]
     cap.index = cap.index.map(n.storage_units.bus)
     cap.index = cap.index.map(n.buses.location)
 
@@ -370,7 +376,7 @@ def capacity_storage_units_con(n, carrier='hydro'):
     Returns:
         capacity of generator specified by carrier per region
     """
-    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier] * n.storage_units.efficiency_store[n.storage_units.carrier == carrier]
     cap.index = cap.index.map(n.storage_units.bus)
     cap.index = cap.index.map(n.buses.location)
 
@@ -825,7 +831,6 @@ convert_ISO_3166_2_to_1 = {
     'ZM': 'ZMB',
     'ZW': 'ZWE'
 }
-
 carrier_colors = {
     'AC': 'dimgrey',
     'BEV charger': 'lightyellow',
@@ -917,6 +922,12 @@ carrier_colors = {
     'solar thermal': 'tomato',
     'H2 pipeline': 'pink',
     'H2 pipeline retrofitted': 'violet',
+    'naphtha for industry': 'chartreuse',
+    'kerosene for aviation': 'skyblue',
+    'agriculture machinery oil': 'tan',
+    'biogas to gas': "yellowgreen",
+    'gas for industry': "olive",
+    'gas for industry CC': "mediumslateblue"
 }
 
 c_el_gen_s = [
