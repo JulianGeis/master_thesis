@@ -2,9 +2,9 @@ import pandas as pd
 from itertools import compress
 
 # Plot figsizes
-# single map: (7,6)
-# map with two columns and x rows: ()
-# single heatmap
+# single map: (8,6)
+# map with two columns and x rows: (15, x * 6)
+# single heatmap:
 # heatmap with two columns and x rows:
 
 # Function to extract market values from generators
@@ -358,7 +358,7 @@ def capacity_storage_units(n, carrier='hydro'):
     Returns:
         capacity of generator specified by carrier per region
     """
-    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier] * n.storage_units.efficiency_dispatch[n.storage_units.carrier == carrier]
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
     cap.index = cap.index.map(n.storage_units.bus)
     cap.index = cap.index.map(n.buses.location)
 
@@ -376,7 +376,7 @@ def capacity_storage_units_con(n, carrier='hydro'):
     Returns:
         capacity of generator specified by carrier per region
     """
-    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier] * n.storage_units.efficiency_store[n.storage_units.carrier == carrier]
+    cap = n.storage_units.p_nom_opt[n.storage_units.carrier == carrier]
     cap.index = cap.index.map(n.storage_units.bus)
     cap.index = cap.index.map(n.buses.location)
 
@@ -508,12 +508,13 @@ def time_stored_LIFO(charge):
     # add difference of state of charge time series and assign first difference the state at the beginning
     result = pd.concat([charge, charge.diff(), charge.diff()], axis=1)
     result.columns = ["state_of_charge", "diff_fixed", "diff"]
+    # start with state of charge for first observation
     result.loc["2013-01-01 00:00:00", "diff"] = result.loc["2013-01-01 00:00:00", "state_of_charge"]
     result.loc["2013-01-01 00:00:00", "diff_fixed"] = result.loc["2013-01-01 00:00:00", "state_of_charge"]
 
     for snap in result.index:
         if result.loc[snap, "diff"] < 0:
-            #current discharge (negative)
+            # current discharge (negative)
             discharge = abs(result.loc[snap, "diff"])
             i = 1
             # while discharged amount not 0 find last charging date and amount and subtract discharged amount from it
@@ -838,6 +839,7 @@ carrier_colors = {
     'DC': 'lightgrey',
     'Fischer-Tropsch': 'gold',
     'H2': 'turquoise',
+    'H2 storage': 'turquoise',
     'H2 Electrolysis': 'fuchsia',
     'H2 Fuel Cell': 'indigo',
     'H2 for industry': 'cadetblue',
