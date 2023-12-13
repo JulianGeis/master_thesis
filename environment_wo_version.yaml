@@ -1,0 +1,14 @@
+name: ma_env
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - jupyter
+  - pypsa
+  - pandas
+  - seaborn
+  - numpy
+  - plotly
+  - glpk
+  - geopandas
+  - pycountry
